@@ -4,7 +4,11 @@ STACK ENDS
 
 
 DATA SEGMENT PARA 'DATA'
-	
+
+	WINDOW_WIDTH DW 140h	;width of window (320 pixels)
+	WINDOW_HEIGHT DW 0C8h	;height of window (200 pixels)
+	WINDOW_BOUNDARY DW 6	;window margin from edges
+
 	TIME_AUX DB 0			;variable for checking time
 
 	BALL_X DW 0Ah			;X Position of the Ball
@@ -54,10 +58,40 @@ CODE SEGMENT PARA 'CODE'
 
 		MOV AX,BALL_VELOCITY_X
 		ADD BALL_X,AX				;updating x position of ball
+
+		MOV AX,WINDOW_BOUNDARY
+		CMP BALL_X,AX				;if x position of ball < window boundary -> negate the velocity
+		JL NEG_VELOCITY_X
+
+		MOV AX,WINDOW_WIDTH
+		SUB AX,BALL_SIZE
+		SUB AX,WINDOW_BOUNDARY
+		CMP BALL_X,AX				;if x position of ball > (window width - window boundary - ball size) -> negate the velocity
+		JG NEG_VELOCITY_X
+
 		MOV AX,BALL_VELOCITY_Y
 		ADD BALL_Y,AX				;updating y position of ball
 
+		MOV AX,WINDOW_BOUNDARY
+		CMP BALL_Y,AX				;if y position of ball < window boundary -> negate the velocity
+		JL NEG_VELOCITY_Y
+
+		MOV AX,WINDOW_HEIGHT
+		SUB AX,BALL_SIZE
+		SUB AX,WINDOW_BOUNDARY
+		CMP BALL_Y,AX				;if y position of ball > (window height - window boundary - ball size) -> negate the velocity
+		JG NEG_VELOCITY_Y
+
 		RET
+
+		NEG_VELOCITY_X:
+			NEG BALL_VELOCITY_X
+			RET
+		
+		NEG_VELOCITY_Y:
+			NEG BALL_VELOCITY_Y
+			RET
+
 	MOVE_BALL ENDP
 
 
