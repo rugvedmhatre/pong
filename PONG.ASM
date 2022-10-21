@@ -11,8 +11,10 @@ DATA SEGMENT PARA 'DATA'
 
 	TIME_AUX DB 0			;variable for checking time
 
-	BALL_X DW 0Ah			;X Position of the Ball
-	BALL_Y DW 0Ah			;Y Position of the Ball
+	BALL_INITIAL_X DW 0A0h  ;Initial X position of the Ball 
+	BALL_INITIAL_Y DW 64h   ;Initial Y position of the Ball
+    BALL_X DW 0A0h			;X Position of the Ball
+	BALL_Y DW 64h			;Y Position of the Ball
 	BALL_SIZE DW 04h		;4 pixel size Ball
 	BALL_VELOCITY_X DW 05h	;X Velocity of the ball
 	BALL_VELOCITY_Y DW 02h	;Y Velocity of the ball
@@ -60,14 +62,14 @@ CODE SEGMENT PARA 'CODE'
 		ADD BALL_X,AX				;updating x position of ball
 
 		MOV AX,WINDOW_BOUNDARY
-		CMP BALL_X,AX				;if x position of ball < window boundary -> negate the velocity
-		JL NEG_VELOCITY_X
+		CMP BALL_X,AX				;if x position of ball < window boundary -> reset the ball position
+		JL RESET_BALL
 
 		MOV AX,WINDOW_WIDTH
 		SUB AX,BALL_SIZE
 		SUB AX,WINDOW_BOUNDARY
-		CMP BALL_X,AX				;if x position of ball > (window width - window boundary - ball size) -> negate the velocity
-		JG NEG_VELOCITY_X
+		CMP BALL_X,AX				;if x position of ball > (window width - window boundary - ball size) -> reset the ball position
+		JG RESET_BALL
 
 		MOV AX,BALL_VELOCITY_Y
 		ADD BALL_Y,AX				;updating y position of ball
@@ -84,8 +86,8 @@ CODE SEGMENT PARA 'CODE'
 
 		RET
 
-		NEG_VELOCITY_X:
-			NEG BALL_VELOCITY_X
+		RESET_BALL:
+			CALL RESET_BALL_POSITION
 			RET
 		
 		NEG_VELOCITY_Y:
@@ -94,6 +96,18 @@ CODE SEGMENT PARA 'CODE'
 
 	MOVE_BALL ENDP
 
+
+    RESET_BALL_POSITION PROC NEAR
+        
+        MOV AX,BALL_INITIAL_X
+        MOV BALL_X,AX
+        
+        MOV AX,BALL_INITIAL_Y
+        MOV BALL_Y,AX
+
+        RET
+    RESET_BALL_POSITION ENDP
+        
 
 	DRAW_BALL PROC NEAR
 		
