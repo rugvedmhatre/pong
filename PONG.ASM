@@ -11,13 +11,20 @@ DATA SEGMENT PARA 'DATA'
 
 	TIME_AUX DB 0			;variable for checking time
 
-	BALL_INITIAL_X DW 0A0h  ;Initial X position of the Ball 
-	BALL_INITIAL_Y DW 64h   ;Initial Y position of the Ball
-    BALL_X DW 0A0h			;X Position of the Ball
+	BALL_INITIAL_X DW 0A0h	;Initial X position of the Ball 
+	BALL_INITIAL_Y DW 64h	;Initial Y position of the Ball
+	BALL_X DW 0A0h			;X Position of the Ball
 	BALL_Y DW 64h			;Y Position of the Ball
 	BALL_SIZE DW 04h		;4 pixel size Ball
 	BALL_VELOCITY_X DW 05h	;X Velocity of the ball
 	BALL_VELOCITY_Y DW 02h	;Y Velocity of the ball
+
+	PADDLE_LEFT_X DW 0Ah	;Initial X position of the Left Paddle
+	PADDLE_LEFT_Y DW 0Ah	;Initial Y position of the Left Paddle
+	PADDLE_RIGHT_X DW 130h	;Initial X position of the Right Paddle
+	PADDLE_RIGHT_Y DW 0Ah	;Initial Y position of the Right Paddle
+	PADDLE_WIDTH DW 05h		;Width of the paddle
+	PADDLE_LENGTH DW 1Fh	;Height of the paddle
 
 DATA ENDS
 
@@ -49,6 +56,8 @@ CODE SEGMENT PARA 'CODE'
 
 			CALL MOVE_BALL			;call move ball procedure to update position
 			CALL DRAW_BALL			;call draw ball procedure
+
+			CALL DRAW_PADDLES		;call draw paddles procedure
 			
 			JMP CHECK_TIME			;check time again after drawing the ball
 
@@ -97,17 +106,17 @@ CODE SEGMENT PARA 'CODE'
 	MOVE_BALL ENDP
 
 
-    RESET_BALL_POSITION PROC NEAR
-        
-        MOV AX,BALL_INITIAL_X
-        MOV BALL_X,AX
-        
-        MOV AX,BALL_INITIAL_Y
-        MOV BALL_Y,AX
+	RESET_BALL_POSITION PROC NEAR
+		
+		MOV AX,BALL_INITIAL_X
+		MOV BALL_X,AX
+		
+		MOV AX,BALL_INITIAL_Y
+		MOV BALL_Y,AX
 
-        RET
-    RESET_BALL_POSITION ENDP
-        
+		RET
+	RESET_BALL_POSITION ENDP
+		
 
 	DRAW_BALL PROC NEAR
 		
@@ -136,6 +145,58 @@ CODE SEGMENT PARA 'CODE'
 
 		RET
 	DRAW_BALL ENDP
+
+
+	DRAW_PADDLES PROC NEAR
+
+		MOV CX,PADDLE_LEFT_X
+		MOV DX,PADDLE_LEFT_Y
+
+		DRAW_PADDLE_LEFT:
+			MOV AH,0Ch				;set the configuration to write a pixel
+			MOV AL,0Fh				;chose white color
+			MOV BH,00h				;set the page number
+			INT 10h					;run the configuration
+			
+			INC CX					;CX=CX+1
+			MOV AX,CX				;AX=CX
+			SUB AX,PADDLE_LEFT_X	;AX=AX-PADDLE_LEFT_X
+			CMP AX,PADDLE_WIDTH		;IF AX>PADDLE_WIDTH -> Y: We go to next line. OR -> N: We continue on the next column
+			JNG DRAW_PADDLE_LEFT	;Jump to label DRAW_PADDLE_LEFT if comparison not greater
+
+			MOV CX,PADDLE_LEFT_X	;set CX to its original value
+			INC DX					;DX=DX+1
+
+			MOV AX,DX				;AX=DX
+			SUB AX,PADDLE_LEFT_Y	;AX=AX-PADDLE_LEFT_Y
+			CMP AX,PADDLE_LENGTH	;IF AX>PADDLE_LENGTH -> Y: We go to next column
+			JNG DRAW_PADDLE_LEFT	;Jump to label DRAW_PADDLE_LEFT if comparison not greater
+
+		MOV CX,PADDLE_RIGHT_X
+		MOV DX,PADDLE_RIGHT_Y
+
+		DRAW_PADDLE_RIGHT:
+			MOV AH,0Ch				;set the configuration to write a pixel
+			MOV AL,0Fh				;chose white color
+			MOV BH,00h				;set the page number
+			INT 10h					;run the configuration
+			
+			INC CX					;CX=CX+1
+			MOV AX,CX				;AX=CX
+			SUB AX,PADDLE_RIGHT_X	;AX=AX-PADDLE_RIGHT_X
+			CMP AX,PADDLE_WIDTH		;IF AX>PADDLE_WIDTH -> Y: We go to next line. OR -> N: We continue on the next column
+			JNG DRAW_PADDLE_RIGHT	;Jump to label DRAW_PADDLE_RIGHT if comparison not greater
+
+			MOV CX,PADDLE_RIGHT_X	;set CX to its original value
+			INC DX					;DX=DX+1
+
+			MOV AX,DX				;AX=DX
+			SUB AX,PADDLE_RIGHT_Y	;AX=AX-PADDLE_RIGHT_Y
+			CMP AX,PADDLE_LENGTH	;IF AX>PADDLE_LENGTH -> Y: We go to next column
+			JNG DRAW_PADDLE_RIGHT	;Jump to label DRAW_PADDLE_RIGHT if comparison not greater
+
+		RET
+	DRAW_PADDLES ENDP
 
 
 	CLEAR_SCREEN PROC NEAR
