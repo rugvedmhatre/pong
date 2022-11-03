@@ -11,11 +11,22 @@ DATA SEGMENT PARA 'DATA'
 
 	TIME_AUX DB 0						;variable for checking time
 	GAME_ACTIVE_FLAG DB 1				;variable to check whether game is active (1 = Yes; 0 = No)
+	CURRENT_SCREEN DB 0					;variable to check current screen (0 = main menu, 1 = game)
+	AI_PLAYER DB 0						;variable to check AI player
 	
+	WINNER_INDEX DB 0					;left = player 1; right = player 2
+
 	GAME_OVER_STRING DB 'GAME OVER','$'	;game over string
 	GAME_WIN_STRING DB 'PLAYER 0 WON!','$'
-	WINNER_INDEX DB 0					;left = player 1; right = player 2
 	REPLAY_STRING DB 'Press R to play again.','$'
+	EXIT_STRING DB 'Press E to exit to main menu.','$'
+
+	TOP_STRING DB '--------','$'
+	PONG_STRING DB '| PONG |','$'			;pong game string
+	BOTTOM_STRING DB '--------','$'
+	SINGLE_PLAYER_STRING DB 'Press S for single player game','$'
+	MULTI_PLAYER_STRING DB 'Press M for multiplayer game','$'
+	QUIT_STRING DB 'Press E to exit game','$'
 
 	BALL_INITIAL_X DW 0A0h				;Initial X position of the ball 
 	BALL_INITIAL_Y DW 64h				;Initial Y position of the ball
@@ -37,7 +48,8 @@ DATA SEGMENT PARA 'DATA'
 
 	PADDLE_WIDTH DW 05h					;Width of the paddle
 	PADDLE_LENGTH DW 1Eh				;Height of the paddle
-	PADDLE_VELOCITY DW 05h				;Velocity of the paddle
+	LEFT_PADDLE_VELOCITY DW 05h			;Velocity of the paddle
+	RIGHT_PADDLE_VELOCITY DW 05h		;Velocity of the paddle
 	PADDLE_INITIAL_Y DW 55h				;Initial Y position of paddles
 
 DATA ENDS
@@ -58,6 +70,9 @@ CODE SEGMENT PARA 'CODE'
 		CALL CLEAR_SCREEN				;call clear screen procedure
 		
 		CHECK_TIME:
+			CMP CURRENT_SCREEN,00h		;check if current screen is main menu
+			JE MAIN_MENU_SCREEN			;if current screen is main menu, go to main menu screen
+
 			CMP GAME_ACTIVE_FLAG,00h	;check if game is not active
 			JE GAME_OVER_SCREEN			;if game is not active, go to game over screen
 
@@ -83,6 +98,10 @@ CODE SEGMENT PARA 'CODE'
 
 		GAME_OVER_SCREEN:
 			CALL DRAW_GAME_OVER			;call procdeure to display game over screen
+			JMP CHECK_TIME
+		
+		MAIN_MENU_SCREEN:
+			CALL DRAW_MAIN_MENU			;call procdeure to display main menu screen
 			JMP CHECK_TIME
 
 		RET
@@ -293,7 +312,7 @@ CODE SEGMENT PARA 'CODE'
 			JMP RIGHT_PADDLE
 
 			MOVE_LEFT_PADDLE_UP:
-				MOV AX,PADDLE_VELOCITY
+				MOV AX,LEFT_PADDLE_VELOCITY
 				SUB PADDLE_LEFT_Y,AX	;to move up, Y position = Y - velocity
 				MOV AX,WINDOW_BOUNDARY
 				CMP PADDLE_LEFT_Y,AX	;check if touching the window boundary
@@ -305,7 +324,7 @@ CODE SEGMENT PARA 'CODE'
 					JMP RIGHT_PADDLE
 
 			MOVE_LEFT_PADDLE_DWN:
-				MOV AX,PADDLE_VELOCITY
+				MOV AX,LEFT_PADDLE_VELOCITY
 				ADD PADDLE_LEFT_Y,AX	;to move down, Y = Y + velocity
 				MOV AX,WINDOW_HEIGHT
 				SUB AX,WINDOW_BOUNDARY
@@ -319,19 +338,41 @@ CODE SEGMENT PARA 'CODE'
 					JMP RIGHT_PADDLE
 
 		RIGHT_PADDLE:
-			CMP AL,6Fh					;check if the key is 'o'
-			JE MOVE_RIGHT_PADDLE_UP		;jump to label MOVE_RIGHT_PADDLE_UP
-			CMP AL,4Fh					;check if it is 'O'
-			JE MOVE_RIGHT_PADDLE_UP		;jump to label MOVE_RIGHT_PADDLE_UP
+			CMP AI_PLAYER,01h
+			JE AI_CONTROL
 
-			CMP AL,6Ch					;check if it is 'l'
-			JE MOVE_RIGHT_PADDLE_DWN	;jump to label MOVE_RIGHT_PADDLE_DWN
-			CMP AL,4Ch					;check if it is 'L'
-			JE MOVE_RIGHT_PADDLE_DWN	;jump to label MOVE_RIGHT_PADDLE_DWN
-			JMP EXIT_PROC				;if no key detected, exit
+			CHECK_KEY_PRESS:
+				CMP AL,6Fh				;check if the key is 'o'
+				JE MOVE_RIGHT_PADDLE_UP	;jump to label MOVE_RIGHT_PADDLE_UP
+				CMP AL,4Fh				;check if it is 'O'
+				JE MOVE_RIGHT_PADDLE_UP	;jump to label MOVE_RIGHT_PADDLE_UP
+
+				CMP AL,6Ch				;check if it is 'l'
+				JE MOVE_RIGHT_PADDLE_DWN;jump to label MOVE_RIGHT_PADDLE_DWN
+				CMP AL,4Ch				;check if it is 'L'
+				JE MOVE_RIGHT_PADDLE_DWN;jump to label MOVE_RIGHT_PADDLE_DWN
+
+				JMP EXIT_PROC			;if no key detected, exit
+
+			AI_CONTROL:
+				MOV RIGHT_PADDLE_VELOCITY,03h
+				MOV AX,BALL_Y
+				ADD AX,BALL_SIZE
+				MOV BX,PADDLE_RIGHT_Y
+				ADD BX,02h
+				CMP AX,BX
+				JL MOVE_RIGHT_PADDLE_UP
+
+				MOV AX,PADDLE_RIGHT_Y
+				ADD AX,PADDLE_LENGTH
+				SUB AX,02h
+				CMP AX,BALL_Y
+				JL MOVE_RIGHT_PADDLE_DWN
+
+				JMP EXIT_PROC
 
 			MOVE_RIGHT_PADDLE_UP:
-				MOV AX,PADDLE_VELOCITY
+				MOV AX,RIGHT_PADDLE_VELOCITY
 				SUB PADDLE_RIGHT_Y,AX	;to move up, Y = Y - velocity
 				MOV AX,WINDOW_BOUNDARY
 				CMP PADDLE_RIGHT_Y,AX	;check if touching top boundary
@@ -343,7 +384,7 @@ CODE SEGMENT PARA 'CODE'
 					JMP EXIT_PROC
 
 			MOVE_RIGHT_PADDLE_DWN:
-				MOV AX,PADDLE_VELOCITY
+				MOV AX,RIGHT_PADDLE_VELOCITY
 				ADD PADDLE_RIGHT_Y,AX	;to move down, Y = Y + velocity
 				MOV AX,WINDOW_HEIGHT
 				SUB AX,WINDOW_BOUNDARY
@@ -500,7 +541,7 @@ CODE SEGMENT PARA 'CODE'
 
 		MOV AH,02h						;set cursor position
 		MOV BH,00h						;set page number
-		MOV DH,17h						;set row
+		MOV DH,15h						;set row
 		MOV DL,09h						;set column
 		INT 10h
 
@@ -508,19 +549,156 @@ CODE SEGMENT PARA 'CODE'
 		LEA DX,REPLAY_STRING			;load the address of the string
 		INT 21h
 		
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,17h						;set row
+		MOV DL,06h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,EXIT_STRING				;load the address of the string
+		INT 21h
+
 		MOV AH,00h						;wait for key input
 		INT 16h
+		
 		CMP AL,'R'						;if key is R restart game
 		JE RESTART_GAME
 		CMP AL,'r'						;if key is r restart game
 		JE RESTART_GAME
-		RET
 		
+		CMP AL,'E'						;if key is E exit to main menu
+		JE EXIT_TO_MAIN
+		CMP AL,'e'						;if key is e exit to main menu
+		JE EXIT_TO_MAIN
+		RET
+
 		RESTART_GAME:
 			MOV GAME_ACTIVE_FLAG,01h	;set game active flag to restart game
 			RET
 
+		EXIT_TO_MAIN:
+			MOV GAME_ACTIVE_FLAG,00h	;set game active flag to stop game
+			MOV CURRENT_SCREEN,00h		;set current screen to main menu
+			RET
+
 	DRAW_GAME_OVER ENDP
+
+	
+	DRAW_MAIN_MENU PROC NEAR
+
+		CALL CLEAR_SCREEN
+		
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,09h						;set row
+		MOV DL,10h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,TOP_STRING				;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,0Ah						;set row
+		MOV DL,10h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,PONG_STRING				;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,0Bh						;set row
+		MOV DL,10h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,BOTTOM_STRING			;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,12h						;set row
+		MOV DL,05h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,SINGLE_PLAYER_STRING		;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,14h						;set row
+		MOV DL,06h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,MULTI_PLAYER_STRING		;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,16h						;set row
+		MOV DL,0Ah						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,QUIT_STRING				;load the address of the string
+		INT 21h
+
+		GET_KEY_PRESS:
+			MOV AH,00h					;wait for key input
+			INT 16h
+			
+			CMP AL,'S'					;if key is S single player game
+			JE SINGLE_PLAYER_GAME
+			CMP AL,'s'					;if key is s single player game
+			JE SINGLE_PLAYER_GAME
+			
+			CMP AL,'M'					;if key is M multiplayer game
+			JE MULTI_PLAYER_GAME
+			CMP AL,'m'					;if key is m multiplayer game
+			JE MULTI_PLAYER_GAME
+			
+			CMP AL,'E'					;if key is E exit game
+			JE EXIT_GAME
+			CMP AL,'e'					;if key is e exit game
+			JE EXIT_GAME
+			JMP GET_KEY_PRESS
+
+		SINGLE_PLAYER_GAME:
+			MOV CURRENT_SCREEN,01h		;show game screen
+			MOV GAME_ACTIVE_FLAG,01h	;set game active flag to restart game
+			MOV AI_PLAYER,01h			;set ai player
+			RET
+
+		MULTI_PLAYER_GAME:
+			MOV CURRENT_SCREEN,01h		;show game screen
+			MOV GAME_ACTIVE_FLAG,01h	;set game active flag to restart game
+			MOV AI_PLAYER,00h
+			RET
+
+		EXIT_GAME:
+			CALL QUIT_GAME
+		
+		RET
+	DRAW_MAIN_MENU ENDP
+
+	
+	QUIT_GAME PROC NEAR
+
+		MOV AH,00h                   	;set the configuration to video mode
+		MOV AL,02h                   	;choose the video mode
+		INT 10h    					 	;execute the configuration 
+	
+		MOV AH,4Ch                   	;terminate program
+		INT 21h
+
+		RET
+	QUIT_GAME ENDP
 
 
 	CLEAR_SCREEN PROC NEAR
