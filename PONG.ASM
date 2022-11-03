@@ -96,8 +96,7 @@ CODE SEGMENT PARA 'CODE'
 		SUB AX,WINDOW_BOUNDARY
 		CMP BALL_Y,AX					;if y position of ball > (window height - window boundary - ball size) -> negate the velocity
 		JG NEG_VELOCITY_Y
-
-		RET
+		JMP CHECK_RIGHT_COLLISION		;else check collision with right paddle
 
 		RESET_BALL:
 			CALL RESET_BALL_POSITION	;reset ball position to center of the screen
@@ -105,6 +104,59 @@ CODE SEGMENT PARA 'CODE'
 		
 		NEG_VELOCITY_Y:
 			NEG BALL_VELOCITY_Y			;negate ball position to imitate a bounce
+			RET
+
+		CHECK_RIGHT_COLLISION:
+			MOV AX,BALL_X				;check for collision on right paddle
+			ADD AX,BALL_SIZE				
+			CMP AX,PADDLE_RIGHT_X		;compare right paddle X with BALL_X + BALL_SIZE
+			JNG CHECK_LEFT_COLLISION	;if BALL_X + BALL_SIZE > PADDLE_RIGHT_X = collision; else check left paddle
+
+			MOV AX,PADDLE_RIGHT_X			
+			ADD AX,PADDLE_WIDTH
+			CMP BALL_X,AX				;compare BALL_X with right paddle X + width of the paddle
+			JNL CHECK_LEFT_COLLISION	;if BALL_X < PADDLE_RIGHT_X + PADDLE_WIDTH = collision; else check left paddle
+
+			MOV AX,BALL_Y
+			ADD AX,BALL_SIZE
+			CMP AX,PADDLE_RIGHT_Y		;compare right paddle Y with BALL_Y + BALL_SIZE
+			JNG CHECK_LEFT_COLLISION	;if BALL_Y + BALL_SIZE > PADDLE_RIGHT_Y = collision; else check left paddle
+
+			MOV AX,PADDLE_RIGHT_Y
+			ADD AX,PADDLE_LENGTH
+			CMP BALL_Y,AX				;compare BALL_Y with right paddle Y + length of the paddle
+			JNL CHECK_LEFT_COLLISION	;if BALL_Y < PADDLE_RIGHT_Y + PADDLE_LENGTH = collision; else check left paddle
+			
+			JMP NEG_VELOCITY_X			;if above conditions are checked then ball is colliding with right paddle ->  negate the velocity
+			
+		CHECK_LEFT_COLLISION:
+			MOV AX,BALL_X				;check for collision on left paddle
+			ADD AX,BALL_SIZE				
+			CMP AX,PADDLE_LEFT_X		;compare left paddle X with BALL_X + BALL_SIZE
+			JNG NO_COLLISION			;if BALL_X + BALL_SIZE > PADDLE_LEFT_X = collision; else return
+
+			MOV AX,PADDLE_LEFT_X			
+			ADD AX,PADDLE_WIDTH
+			CMP BALL_X,AX				;compare BALL_X with left paddle X + width of the paddle
+			JNL NO_COLLISION			;if BALL_X < PADDLE_LEFT_X + PADDLE_WIDTH = collision; else return
+
+			MOV AX,BALL_Y
+			ADD AX,BALL_SIZE
+			CMP AX,PADDLE_LEFT_Y		;compare left paddle Y with BALL_Y + BALL_SIZE
+			JNG NO_COLLISION			;if BALL_Y + BALL_SIZE > PADDLE_LEFT_Y = collision; else return
+
+			MOV AX,PADDLE_LEFT_Y
+			ADD AX,PADDLE_LENGTH
+			CMP BALL_Y,AX				;compare BALL_Y with left paddle Y + length of the paddle
+			JNL NO_COLLISION			;if BALL_Y < PADDLE_LEFT_Y + PADDLE_LENGTH = collision; else return
+			
+			JMP NEG_VELOCITY_X			;if above conditions are checked then ball is colliding with left paddle ->  negate the velocity
+		
+		NEG_VELOCITY_X:
+			NEG BALL_VELOCITY_X
+			RET
+
+		NO_COLLISION:
 			RET
 
 	MOVE_BALL ENDP
