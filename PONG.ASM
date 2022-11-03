@@ -10,6 +10,12 @@ DATA SEGMENT PARA 'DATA'
 	WINDOW_BOUNDARY DW 6				;window margin from edges
 
 	TIME_AUX DB 0						;variable for checking time
+	GAME_ACTIVE_FLAG DB 1				;variable to check whether game is active (1 = Yes; 0 = No)
+	
+	GAME_OVER_STRING DB 'GAME OVER','$'	;game over string
+	GAME_WIN_STRING DB 'PLAYER 0 WON!','$'
+	WINNER_INDEX DB 0					;left = player 1; right = player 2
+	REPLAY_STRING DB 'Press R to play again.','$'
 
 	BALL_INITIAL_X DW 0A0h				;Initial X position of the ball 
 	BALL_INITIAL_Y DW 64h				;Initial Y position of the ball
@@ -32,6 +38,7 @@ DATA SEGMENT PARA 'DATA'
 	PADDLE_WIDTH DW 05h					;Width of the paddle
 	PADDLE_LENGTH DW 1Eh				;Height of the paddle
 	PADDLE_VELOCITY DW 05h				;Velocity of the paddle
+	PADDLE_INITIAL_Y DW 55h				;Initial Y position of paddles
 
 DATA ENDS
 
@@ -51,6 +58,9 @@ CODE SEGMENT PARA 'CODE'
 		CALL CLEAR_SCREEN				;call clear screen procedure
 		
 		CHECK_TIME:
+			CMP GAME_ACTIVE_FLAG,00h	;check if game is not active
+			JE GAME_OVER_SCREEN			;if game is not active, go to game over screen
+
 			MOV AH,2Ch					;get system time
 			INT 21h						;CH=hour, CL=minute, DH=second, DL=1/100second
 
@@ -70,6 +80,10 @@ CODE SEGMENT PARA 'CODE'
 			CALL DRAW_UI				;call draw ui procdeure
 			
 			JMP CHECK_TIME				;check time again after drawing the ball
+
+		GAME_OVER_SCREEN:
+			CALL DRAW_GAME_OVER			;call procdeure to display game over screen
+			JMP CHECK_TIME
 
 		RET
 	MAIN ENDP
@@ -121,10 +135,26 @@ CODE SEGMENT PARA 'CODE'
 			RET
 		
 		GAME_OVER:
+			CALL RESET_PADDLES			;reset paddle positions
+			CMP PADDLE_LEFT_SCORE,05h	;check if left paddle has won
+			JNL LEFT_WON
+			JMP RIGHT_WON
+
+		LEFT_WON:
+			MOV WINNER_INDEX,01h		;left has won
+			JMP GAME_OVER_CONTINUED
+			
+		RIGHT_WON:
+			MOV WINNER_INDEX,02h		;right has won
+			JMP GAME_OVER_CONTINUED
+
+		GAME_OVER_CONTINUED:
+			MOV GAME_ACTIVE_FLAG,00h	;to stop the game	
 			MOV PADDLE_LEFT_SCORE,00h	;reset scores to 0
-			MOV PADDLE_RIGHT_SCORE,00h
-			CALL UPDATE_LEFT_SCORE
-			CALL UPDATE_RIGHT_SCORE	
+			MOV PADDLE_RIGHT_SCORE,00h	;reset scores to 0
+			CALL UPDATE_LEFT_SCORE		;reset the socre on screen
+			CALL UPDATE_RIGHT_SCORE		;reset the score on screen
+			CALL UPDATE_WINNER_STRING	;update the winner on screen
 			RET
 
 		NEG_VELOCITY_Y:
@@ -186,6 +216,16 @@ CODE SEGMENT PARA 'CODE'
 
 	MOVE_BALL ENDP
 
+
+	RESET_PADDLES PROC NEAR
+		
+		MOV AX,PADDLE_INITIAL_Y
+		MOV PADDLE_LEFT_Y,AX					;set current left paddle Y position to initial position
+		MOV PADDLE_RIGHT_Y,AX					;set current right paddle Y position to initial position
+
+		RET
+	RESET_PADDLES ENDP
+	
 
 	RESET_BALL_POSITION PROC NEAR
 		
@@ -422,6 +462,65 @@ CODE SEGMENT PARA 'CODE'
 
 		RET
 	UPDATE_LEFT_SCORE ENDP
+
+
+	UPDATE_WINNER_STRING PROC NEAR
+
+		MOV AL,WINNER_INDEX				;get winner index
+		ADD AL,30h						;convert to ascii
+		MOV [GAME_WIN_STRING+7],AL		;repace the 7th char in string with winner index
+
+		RET
+	UPDATE_WINNER_STRING ENDP
+
+	
+	DRAW_GAME_OVER PROC NEAR
+
+		CALL CLEAR_SCREEN
+		
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,0Bh						;set row
+		MOV DL,0Fh						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,GAME_OVER_STRING			;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,0Dh						;set row
+		MOV DL,0Dh						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,GAME_WIN_STRING			;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,17h						;set row
+		MOV DL,09h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,REPLAY_STRING			;load the address of the string
+		INT 21h
+		
+		MOV AH,00h						;wait for key input
+		INT 16h
+		CMP AL,'R'						;if key is R restart game
+		JE RESTART_GAME
+		CMP AL,'r'						;if key is r restart game
+		JE RESTART_GAME
+		RET
+		
+		RESTART_GAME:
+			MOV GAME_ACTIVE_FLAG,01h	;set game active flag to restart game
+			RET
+
+	DRAW_GAME_OVER ENDP
 
 
 	CLEAR_SCREEN PROC NEAR
