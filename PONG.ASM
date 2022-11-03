@@ -20,13 +20,17 @@ DATA SEGMENT PARA 'DATA'
 	BALL_VELOCITY_Y DW 02h				;Y velocity of the ball
 
 	PADDLE_LEFT_X DW 0Ah				;Current X position of the left paddle
-	PADDLE_LEFT_Y DW 0Ah				;Current Y position of the left paddle
+	PADDLE_LEFT_Y DW 55h				;Current Y position of the left paddle
+	PADDLE_LEFT_SCORE DB 0				;Current score of the left paddle
+	LEFT_SCORE_STRING DB '0','$'		;left paddle score as string
 	
 	PADDLE_RIGHT_X DW 130h				;Current X position of the right paddle
-	PADDLE_RIGHT_Y DW 0Ah				;Current Y position of the right paddle
-	
+	PADDLE_RIGHT_Y DW 55h				;Current Y position of the right paddle
+	PADDLE_RIGHT_SCORE DB 0				;Current score of the right paddle
+	RIGHT_SCORE_STRING DB '0','$'		;right paddle score as string
+
 	PADDLE_WIDTH DW 05h					;Width of the paddle
-	PADDLE_LENGTH DW 1Fh				;Height of the paddle
+	PADDLE_LENGTH DW 1Eh				;Height of the paddle
 	PADDLE_VELOCITY DW 05h				;Velocity of the paddle
 
 DATA ENDS
@@ -62,6 +66,8 @@ CODE SEGMENT PARA 'CODE'
 			
 			CALL MOVE_PADDLES			;call move paddles procdeure
 			CALL DRAW_PADDLES			;call draw paddles procedure
+
+			CALL DRAW_UI				;call draw ui procdeure
 			
 			JMP CHECK_TIME				;check time again after drawing the ball
 
@@ -75,14 +81,14 @@ CODE SEGMENT PARA 'CODE'
 		ADD BALL_X,AX					;updating x position of ball
 
 		MOV AX,WINDOW_BOUNDARY
-		CMP BALL_X,AX					;if x position of ball < window boundary -> reset the ball position
-		JL RESET_BALL
+		CMP BALL_X,AX					;if x position of ball < window boundary -> reset the ball position, and give points to right player
+		JL RIGHT_SCORED
 
 		MOV AX,WINDOW_WIDTH
 		SUB AX,BALL_SIZE
 		SUB AX,WINDOW_BOUNDARY
-		CMP BALL_X,AX					;if x position of ball > (window width - window boundary - ball size) -> reset the ball position
-		JG RESET_BALL
+		CMP BALL_X,AX					;if x position of ball > (window width - window boundary - ball size) -> reset the ball position, and give points to left player
+		JG LEFT_SCORED
 
 		MOV AX,BALL_VELOCITY_Y
 		ADD BALL_Y,AX					;updating y position of ball
@@ -98,10 +104,29 @@ CODE SEGMENT PARA 'CODE'
 		JG NEG_VELOCITY_Y
 		JMP CHECK_RIGHT_COLLISION		;else check collision with right paddle
 
-		RESET_BALL:
+		RIGHT_SCORED:
+			INC PADDLE_RIGHT_SCORE		;increase paddle right score
 			CALL RESET_BALL_POSITION	;reset ball position to center of the screen
+			CALL UPDATE_RIGHT_SCORE		;udpate onscreen score
+			CMP PADDLE_RIGHT_SCORE,05h	;if paddle right score > 5, game over
+			JGE GAME_OVER
+			RET
+
+		LEFT_SCORED:
+			INC PADDLE_LEFT_SCORE		;increase paddle left score
+			CALL RESET_BALL_POSITION	;reset ball position to center of the screen
+			CALL UPDATE_LEFT_SCORE		;update onscreen score
+			CMP PADDLE_LEFT_SCORE,05h	;if paddle left score > 5, game over
+			JGE GAME_OVER
 			RET
 		
+		GAME_OVER:
+			MOV PADDLE_LEFT_SCORE,00h	;reset scores to 0
+			MOV PADDLE_RIGHT_SCORE,00h
+			CALL UPDATE_LEFT_SCORE
+			CALL UPDATE_RIGHT_SCORE	
+			RET
+
 		NEG_VELOCITY_Y:
 			NEG BALL_VELOCITY_Y			;negate ball position to imitate a bounce
 			RET
@@ -169,6 +194,9 @@ CODE SEGMENT PARA 'CODE'
 		
 		MOV AX,BALL_INITIAL_Y
 		MOV BALL_Y,AX					;set current ball position to initial position
+
+		NEG BALL_VELOCITY_X
+		NEG BALL_VELOCITY_Y
 
 		RET
 	RESET_BALL_POSITION ENDP
@@ -344,6 +372,56 @@ CODE SEGMENT PARA 'CODE'
 
 		RET
 	DRAW_PADDLES ENDP
+
+
+	DRAW_UI PROC NEAR
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,01h						;set row
+		MOV DL,05h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,LEFT_SCORE_STRING		;load the address of the string
+		INT 21h
+
+		MOV AH,02h						;set cursor position
+		MOV BH,00h						;set page number
+		MOV DH,01h						;set row
+		MOV DL,22h						;set column
+		INT 10h
+
+		MOV AH,09h
+		LEA DX,RIGHT_SCORE_STRING		;load the address of the string
+		INT 21h
+
+		RET
+	DRAW_UI ENDP
+
+
+	UPDATE_RIGHT_SCORE PROC NEAR
+		
+		SUB AX,AX
+		MOV AL,PADDLE_RIGHT_SCORE
+
+		ADD AL,30h						;to convert number into its ascii character, we add 30h
+		MOV [RIGHT_SCORE_STRING],AL		;copy data from AL to the address of the variable
+		
+		RET
+	UPDATE_RIGHT_SCORE ENDP
+
+
+	UPDATE_LEFT_SCORE PROC NEAR
+		
+		SUB AX,AX
+		MOV AL,PADDLE_LEFT_SCORE
+
+		ADD AL,30h						;to convert number into its ascii character, we add 30h
+		MOV [LEFT_SCORE_STRING],AL		;copy data from AL to the address of the variable
+
+		RET
+	UPDATE_LEFT_SCORE ENDP
 
 
 	CLEAR_SCREEN PROC NEAR
