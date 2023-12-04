@@ -4,7 +4,7 @@ This project entails the development of a classic Pong Game using Assembly Langu
 
 ## Demo
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/TSuLjSkNKvs?si=jkh6E_Pypz9wRtN_" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+https://github.com/rugvedmhatre/pong/assets/36701399/00e5284e-4438-4419-aed9-737f0463b912
 
 ## Downloads and Configuration
 
